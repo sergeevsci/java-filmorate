@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate.controller;
 import org.springframework.web.bind.annotation.*;
 
 import ru.yandex.practicum.filmorate.exception.ConditionsNotMetException;
+import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
@@ -48,6 +49,18 @@ public class FilmController {
     }
 
     private void validate(Film film) {
+        // Проверка на дубликаты (название + год релиза) при создании фильма, так как могут быть фильмы с одинаковым названием
+        if (film.getId() == null && film.getReleaseDate() != null) {
+            boolean isDuplicate = filmStorage.findAll().stream()
+                    .anyMatch(f -> f.getName().equalsIgnoreCase(film.getName())
+                            && f.getReleaseDate().getYear() == film.getReleaseDate().getYear());
+
+            if (isDuplicate) {
+                throw new DuplicatedDataException("Фильм с названием '" + film.getName() + "' за "
+                        + film.getReleaseDate().getYear() + " год уже существует");
+            }
+        }
+
         if (film.getName() == null || film.getName().isBlank()) {
             throw new ConditionsNotMetException("Название фильма не может быть пустым");
         }
