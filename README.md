@@ -1,2 +1,3 @@
 # java-filmorate
-Template repository for Filmorate project.
+Доброго дня, Сергей! Ура, начался удобный спринг бут)
+Отправляю задание на проверку!
