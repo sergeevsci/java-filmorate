@@ -1,20 +1,27 @@
 package ru.yandex.practicum.filmorate.model;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PastOrPresent;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-
 import java.time.LocalDate;
-
-/**
- * User.
- */
 
 @Data
 @EqualsAndHashCode(of = "id")
 public class User {
     private Long id;
+
+    @NotBlank(message = "Электронная почта не может быть пустой")
+    @Email(message = "Электронная почта должна содержать символ @") // важны обе аннотации, так как Email схавает пустую строку
     private String email;
+
+    @NotBlank(message = "Логин не может быть пустым")
     private String login;
+
     private String name;
+
+    @PastOrPresent(message = "Дата рождения не может быть в будущем")
     private LocalDate birthday;
 }
+

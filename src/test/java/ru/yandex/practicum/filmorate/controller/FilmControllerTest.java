@@ -1,13 +1,12 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -24,151 +23,83 @@ import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ExtendWith(MockitoExtension.class) // работает с фейковым сервером Мокито
+@ExtendWith(MockitoExtension.class)
 class FilmControllerTest {
 
-    @Mock // дубли внутри фейк-сервера
+    private Validator validator;
+
+    @Mock
     private InMemoryFilmStorage filmStorage;
 
-    private FilmController controller;
     private MockMvc mockMvc;
 
     @BeforeEach
-    void setUp() { // создает виртуальный симулятор
-        controller = new FilmController(filmStorage);
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+    void setUp() {
+        validator = Validation.buildDefaultValidatorFactory().getValidator();
+        mockMvc = MockMvcBuilders.standaloneSetup(new FilmController(filmStorage)).build();
     }
 
     @Test
-    void createRejectsBlankName() {
+    void validFilmPassesValidation() {
+        Film film = validFilm();
+
+        assertTrue(validator.validate(film).isEmpty());
+    }
+
+    @Test
+    void rejectsBlankName() {
         Film film = validFilm();
         film.setName(" ");
 
-        assertThrows(ConditionsNotMetException.class, () -> controller.create(film));
-        verify(filmStorage, never()).save(any());
+        assertEquals(1, validator.validateProperty(film, "name").size());
     }
 
     @Test
-    void createRejectsNullName() {
+    void rejectsNullName() {
         Film film = validFilm();
         film.setName(null);
 
-        assertThrows(ConditionsNotMetException.class, () -> controller.create(film));
-        verify(filmStorage, never()).save(any());
+        assertEquals(1, validator.validateProperty(film, "name").size());
     }
 
     @Test
-    void createRejectsTooLongDescription() {
+    void rejectsTooLongDescription() {
         Film film = validFilm();
         film.setDescription("a".repeat(201));
 
-        assertThrows(ConditionsNotMetException.class, () -> controller.create(film));
-        verify(filmStorage, never()).save(any());
+        assertEquals(1, validator.validateProperty(film, "description").size());
     }
 
     @Test
-    void createAcceptsMaxDescriptionLength() {
+    void acceptsMaxDescriptionLength() {
         Film film = validFilm();
         film.setDescription("a".repeat(200));
-        when(filmStorage.save(any(Film.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Film created = controller.create(film);
-
-        ArgumentCaptor<Film> captor = ArgumentCaptor.forClass(Film.class);
-        verify(filmStorage).save(captor.capture());
-        assertEquals(200, captor.getValue().getDescription().length());
-        assertEquals("Film", created.getName());
+        assertTrue(validator.validateProperty(film, "description").isEmpty());
     }
 
     @Test
-    void createRejectsReleaseDateBeforeAllowedMinimum() {
+    void rejectsNullReleaseDate() {
         Film film = validFilm();
-        film.setReleaseDate(LocalDate.of(1895, 12, 27));
+        film.setReleaseDate(null);
 
-        assertThrows(ConditionsNotMetException.class, () -> controller.create(film));
-        verify(filmStorage, never()).save(any());
+        assertEquals(1, validator.validateProperty(film, "releaseDate").size());
     }
 
     @Test
-    void createAcceptsReleaseDateBoundary() {
-        Film film = validFilm();
-        film.setReleaseDate(LocalDate.of(1895, 12, 28));
-        when(filmStorage.save(any(Film.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        Film created = controller.create(film);
-
-        verify(filmStorage).save(any(Film.class));
-        assertEquals(LocalDate.of(1895, 12, 28), created.getReleaseDate());
-    }
-
-    @Test
-    void createRejectsInvalidDuration() {
-        Film film = validFilm();
-        film.setDuration(Duration.ZERO);
-
-        assertThrows(ConditionsNotMetException.class, () -> controller.create(film));
-        verify(filmStorage, never()).save(any());
-    }
-
-    @Test
-    void createRejectsNullDuration() {
+    void rejectsNullDuration() {
         Film film = validFilm();
         film.setDuration(null);
 
-        assertThrows(ConditionsNotMetException.class, () -> controller.create(film));
-        verify(filmStorage, never()).save(any());
-    }
-
-    @Test
-    void createAcceptsPositiveDurationBoundary() {
-        Film film = validFilm();
-        film.setDuration(Duration.ofMinutes(1));
-        when(filmStorage.save(any(Film.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        Film created = controller.create(film);
-
-        verify(filmStorage).save(any(Film.class));
-        assertEquals(Duration.ofMinutes(1), created.getDuration());
-    }
-
-    @Test
-    void createRejectsDuplicateFilmForSameYear() {
-        Film existing = validFilm(); // создали существующий фильм
-        existing.setId(1L); // вручную присвоили id = 1L, типа фильм сохранен
-        when(filmStorage.findAll()).thenReturn(Collections.singletonList(existing));
-        // Когда контроллер вызовет метод findAll() - верни список, в котором уже лежит наш фильм
-        // Collections.singletonList — это просто быстрый способ создать список из одного элемента.
-
-        Film duplicate = validFilm();
-
-        assertThrows(DuplicatedDataException.class, () -> controller.create(duplicate));
-        verify(filmStorage, never()).save(any()); // отловили ожидаемую ошибку
-    }
-
-    @Test
-    void updateRejectsMissingId() {
-        Film film = validFilm();
-
-        assertThrows(ConditionsNotMetException.class, () -> controller.update(film));
-        verify(filmStorage, never()).update(any());
-    }
-
-    @Test
-    void updateRejectsUnknownFilm() {
-        Film film = validFilm();
-        film.setId(77L);
-
-        assertThrows(NotFoundException.class, () -> controller.update(film));
-        verify(filmStorage, never()).update(any());
+        assertEquals(1, validator.validateProperty(film, "duration").size());
     }
 
     @Test
@@ -177,6 +108,70 @@ class FilmControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(""))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void createRejectsReleaseDateBeforeAllowedMinimum() {
+        Film film = validFilm();
+        film.setReleaseDate(LocalDate.of(1895, 12, 27));
+
+        assertThrows(ConditionsNotMetException.class, () -> new FilmController(filmStorage).create(film));
+        verify(filmStorage, never()).save(any());
+    }
+
+    @Test
+    void createRejectsZeroDuration() {
+        Film film = validFilm();
+        film.setDuration(Duration.ZERO);
+
+        assertThrows(ConditionsNotMetException.class, () -> new FilmController(filmStorage).create(film));
+        verify(filmStorage, never()).save(any());
+    }
+
+    @Test
+    void createRejectsDuplicateFilmForSameYear() {
+        Film existing = validFilm();
+        existing.setId(1L);
+        when(filmStorage.findAll()).thenReturn(Collections.singletonList(existing));
+
+        Film duplicate = validFilm();
+
+        assertThrows(DuplicatedDataException.class, () -> new FilmController(filmStorage).create(duplicate));
+        verify(filmStorage, never()).save(any());
+    }
+
+    @Test
+    void updateRejectsMissingId() {
+        Film film = validFilm();
+        when(filmStorage.findAll()).thenReturn(Collections.emptyList());
+
+        assertThrows(ConditionsNotMetException.class, () -> new FilmController(filmStorage).update(film));
+        verify(filmStorage, never()).update(any());
+    }
+
+    @Test
+    void updateRejectsUnknownFilm() {
+        Film film = validFilm();
+        film.setId(77L);
+
+        assertThrows(NotFoundException.class, () -> new FilmController(filmStorage).update(film));
+        verify(filmStorage, never()).update(any());
+    }
+
+    @Test
+    void acceptsReleaseDateBoundary() {
+        Film film = validFilm();
+        film.setReleaseDate(LocalDate.of(1895, 12, 28));
+
+        assertTrue(validator.validateProperty(film, "releaseDate").isEmpty());
+    }
+
+    @Test
+    void acceptsPositiveDurationBoundary() {
+        Film film = validFilm();
+        film.setDuration(Duration.ofMinutes(1));
+
+        assertTrue(validator.validateProperty(film, "duration").isEmpty());
     }
 
     private Film validFilm() {

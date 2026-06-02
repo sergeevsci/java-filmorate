@@ -1,37 +1,31 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import org.springframework.web.bind.annotation.*;
-
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.ConditionsNotMetException;
-import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
+import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
 
 import java.time.LocalDate;
 import java.util.Collection;
 
-@Slf4j // Lombok автоматически создает поле private static final Logger log
+@Slf4j
 @RestController
 @RequestMapping("/films")
 public class FilmController {
 
-    // хранилище через конструктор
     private final InMemoryFilmStorage filmStorage;
 
     public FilmController(InMemoryFilmStorage filmStorage) {
         this.filmStorage = filmStorage;
     }
 
-    @GetMapping
-    public Collection<Film>  findAll() {
-        return filmStorage.findAll();
-    }
-
     @PostMapping
-    public Film create(@RequestBody Film film) {
+    public Film create(@Valid @RequestBody Film film) { // Добавили @Valid
         validate(film);
         Film savedFilm = filmStorage.save(film);
         log.info("Успешно добавлен новый фильм: '{}' (ID: {})", savedFilm.getName(), savedFilm.getId());
@@ -39,7 +33,7 @@ public class FilmController {
     }
 
     @PutMapping
-    public Film update(@RequestBody Film newFilm) {
+    public Film update(@Valid @RequestBody Film newFilm) { // Добавили @Valid
         validate(newFilm);
 
         if (newFilm.getId() == null) {
@@ -56,44 +50,42 @@ public class FilmController {
         return updatedFilm;
     }
 
+    @GetMapping
+    public Collection<Film> findAll() {
+        return filmStorage.findAll();
+    }
+
     private void validate(Film film) {
-        // Проверка на дубликаты (название + год релиза) при создании фильма, так как могут быть фильмы с одинаковым названием
-        if (film.getId() == null && film.getReleaseDate() != null) {
-            boolean isDuplicate = filmStorage.findAll().stream()
-                    .anyMatch(f -> f.getName().equalsIgnoreCase(film.getName())
-                            && f.getReleaseDate().getYear() == film.getReleaseDate().getYear());
+        // Проверки на name, description и null для duration теперь под капотом Spring
 
-            if (isDuplicate) {
-                log.warn("Валидация фильма провалена: обнаружен дубликат '{}' за {} год",
-                        film.getName(), film.getReleaseDate().getYear());
-                throw new DuplicatedDataException("Фильм с названием '" + film.getName() + "' за "
-                        + film.getReleaseDate().getYear() + " год уже существует");
-            }
-        }
-
-        if (film.getName() == null || film.getName().isBlank()) {
-            log.warn("Валидация фильма провалена: пустое название");
-            throw new ConditionsNotMetException("Название фильма не может быть пустым");
-        }
-
-        if (film.getDescription() != null && film.getDescription().length() > 200) {
-            log.warn("Валидация фильма '{}' провалена: длина описания {} символов (макс. 200)",
-                    film.getName(), film.getDescription().length());
-            throw new ConditionsNotMetException("Максимальная длина описания — 200 символов");
-        }
-
-        if (film.getReleaseDate() != null) {
-            LocalDate cinemaBirthDate = LocalDate.of(1895, 12, 28);
+        // Кастомная проверка даты релиза - ее не сделать аннотациями
+        LocalDate cinemaBirthDate = LocalDate.of(1895, 12, 28);
+        // Проверка на null перед вызовом методов даты
+        if (film.getReleaseDate() != null) { // для тестов Мок, а то падаем с Null
             if (film.getReleaseDate().isBefore(cinemaBirthDate)) {
-                log.warn("Валидация фильма '{}' провалена: дата релиза {} раньше 28.12.1895",
-                        film.getName(), film.getReleaseDate());
+                log.warn("Валидация фильма провалена: дата релиза раньше 28.12.1895");
                 throw new ConditionsNotMetException("Дата релиза должна быть не раньше 28 декабря 1895 года");
             }
         }
 
-        if (film.getDuration() == null || film.getDuration().isNegative() || film.getDuration().isZero()) {
-            log.warn("Валидация фильма '{}' провалена: некорректная продолжительность", film.getName());
-            throw new ConditionsNotMetException("Продолжительность фильма должна быть положительным числом");
+        // Проверка на null перед вызовом методов duration
+        if (film.getDuration() != null) {
+            if (film.getDuration().isNegative() || film.getDuration().isZero()) {
+                log.warn("Валидация фильма провалена: некорректная продолжительность");
+                throw new ConditionsNotMetException("Продолжительность фильма должна быть положительным числом");
+            }
+        }
+
+        // Проверка на дубликаты
+        if (film.getId() == null && film.getReleaseDate() != null) {
+            boolean isDuplicate = filmStorage.findAll().stream()
+                    .anyMatch(f -> f.getName().equalsIgnoreCase(film.getName())
+                            && f.getReleaseDate() != null
+                            && f.getReleaseDate().getYear() == film.getReleaseDate().getYear());
+            if (isDuplicate) {
+                log.warn("Валидация фильма провалена: обнаружен дубликат '{}' за {} год", film.getName(), film.getReleaseDate().getYear());
+                throw new DuplicatedDataException("Фильм с таким названием и годом релиза уже существует");
+            }
         }
     }
 }
