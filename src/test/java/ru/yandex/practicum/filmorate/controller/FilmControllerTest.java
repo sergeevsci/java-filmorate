@@ -11,11 +11,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import ru.yandex.practicum.filmorate.exception.ConditionsNotMetException;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.validation.OnCreate; // ИМПОРТ ГРУППЫ
+import ru.yandex.practicum.filmorate.validation.OnUpdate; // ИМПОРТ ГРУППЫ
 
 import java.time.LocalDate;
 import java.util.Collections;
@@ -36,7 +37,7 @@ class FilmControllerTest {
     private Validator validator;
 
     @Mock
-    private FilmStorage filmStorage; // МЕНЯЕМ НА ИНТЕРФЕЙС
+    private FilmStorage filmStorage;
 
     private MockMvc mockMvc;
 
@@ -49,32 +50,32 @@ class FilmControllerTest {
     @Test
     void validFilmPassesValidation() {
         Film film = validFilm();
-
-        assertTrue(validator.validate(film).isEmpty());
+        // Передаем OnCreate.class, чтобы валидатор знал, какой контекст проверять
+        assertTrue(validator.validate(film, OnCreate.class).isEmpty());
     }
 
     @Test
     void rejectsBlankName() {
         Film film = validFilm();
         film.setName(" ");
-
-        assertEquals(1, validator.validateProperty(film, "name").size());
+        // Добавили OnCreate.class в параметры
+        assertEquals(1, validator.validateProperty(film, "name", OnCreate.class).size());
     }
 
     @Test
     void rejectsNullName() {
         Film film = validFilm();
         film.setName(null);
-
-        assertEquals(1, validator.validateProperty(film, "name").size());
+        // Добавили OnCreate.class в параметры
+        assertEquals(1, validator.validateProperty(film, "name", OnCreate.class).size());
     }
 
     @Test
     void rejectsTooLongDescription() {
         Film film = validFilm();
         film.setDescription("a".repeat(201));
-
-        assertEquals(1, validator.validateProperty(film, "description").size());
+        // Описание проверяется в обеих группах, укажем OnCreate.class
+        assertEquals(1, validator.validateProperty(film, "description", OnCreate.class).size());
     }
 
     @Test
@@ -82,7 +83,7 @@ class FilmControllerTest {
         Film film = validFilm();
         film.setDescription("a".repeat(200));
 
-        assertTrue(validator.validateProperty(film, "description").isEmpty());
+        assertTrue(validator.validateProperty(film, "description", OnCreate.class).isEmpty());
     }
 
     @Test
@@ -90,10 +91,8 @@ class FilmControllerTest {
         Film film = validFilm();
         film.setReleaseDate(null);
 
-        assertEquals(1, validator.validateProperty(film, "releaseDate").size());
+        assertEquals(1, validator.validateProperty(film, "releaseDate", OnCreate.class).size());
     }
-
-    // ТЕСТ НА NULL DURATION УДАЛЕН: примитив int не может быть null
 
     @Test
     void createRejectsEmptyRequestBody() throws Exception {
@@ -108,17 +107,15 @@ class FilmControllerTest {
         Film film = validFilm();
         film.setReleaseDate(LocalDate.of(1895, 12, 27));
 
-        // Теперь эту проверку делает валидатор Spring
-        assertEquals(1, validator.validateProperty(film, "releaseDate").size());
+        assertEquals(1, validator.validateProperty(film, "releaseDate", OnCreate.class).size());
     }
 
     @Test
     void rejectsZeroDuration() {
         Film film = validFilm();
-        film.setDuration(0); // Передаем примитив 0
+        film.setDuration(0);
 
-        // Логика ушла в аннотацию @Positive, проверяем через валидатор Jakarta
-        assertEquals(1, validator.validateProperty(film, "duration").size());
+        assertEquals(1, validator.validateProperty(film, "duration", OnCreate.class).size());
     }
 
     @Test
@@ -136,9 +133,8 @@ class FilmControllerTest {
     @Test
     void updateRejectsMissingId() {
         Film film = validFilm();
-        // Если вы еще не внедрили группы валидации, этот тест проверяет ручной ConditionsNotMetException в контроллере
-        assertThrows(ConditionsNotMetException.class, () -> new FilmController(filmStorage).update(film));
-        verify(filmStorage, never()).update(any());
+        // Теперь отсутствие ID при PUT запросе ловит сам Spring Validation через OnUpdate.class
+        assertEquals(1, validator.validateProperty(film, "id", OnUpdate.class).size());
     }
 
     @Test
@@ -155,15 +151,15 @@ class FilmControllerTest {
         Film film = validFilm();
         film.setReleaseDate(LocalDate.of(1895, 12, 28));
 
-        assertTrue(validator.validateProperty(film, "releaseDate").isEmpty());
+        assertTrue(validator.validateProperty(film, "releaseDate", OnCreate.class).isEmpty());
     }
 
     @Test
     void acceptsPositiveDurationBoundary() {
         Film film = validFilm();
-        film.setDuration(1); // Передаем 1 минуту как int
+        film.setDuration(1);
 
-        assertTrue(validator.validateProperty(film, "duration").isEmpty());
+        assertTrue(validator.validateProperty(film, "duration", OnCreate.class).isEmpty());
     }
 
     private Film validFilm() {
@@ -171,7 +167,7 @@ class FilmControllerTest {
         film.setName("Film");
         film.setDescription("Description");
         film.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film.setDuration(90); // Передаем обычное число int
+        film.setDuration(90);
         return film;
     }
 }

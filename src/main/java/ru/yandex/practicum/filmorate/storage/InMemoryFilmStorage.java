@@ -19,10 +19,29 @@ public class InMemoryFilmStorage implements FilmStorage {
     }
 
     @Override
-    public Film update(Film film) {
-        films.put(film.getId(), film);
-        return film;
+    public Film update(Film newFilm) {
+        // Достаем существующий фильм
+        Film oldFilm = films.get(newFilm.getId());
+
+        // Обновляем в нем только те поля, которые клиент прислал в запросе (не null)
+        if (newFilm.getName() != null) {
+            oldFilm.setName(newFilm.getName());
+        }
+        if (newFilm.getDescription() != null) {
+            oldFilm.setDescription(newFilm.getDescription());
+        }
+        if (newFilm.getReleaseDate() != null) {
+            oldFilm.setReleaseDate(newFilm.getReleaseDate());
+        }
+        if (newFilm.getDuration() != null) {
+            oldFilm.setDuration(newFilm.getDuration());
+        }
+
+        // Сохраняем обновленный старый фильм обратно в мапу
+        films.put(oldFilm.getId(), oldFilm);
+        return oldFilm;
     }
+
 
     @Override
     public boolean exists(Long id) {

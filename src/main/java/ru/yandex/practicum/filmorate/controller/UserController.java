@@ -1,6 +1,6 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import jakarta.validation.Valid;
+import org.springframework.validation.annotation.Validated;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 
@@ -10,6 +10,8 @@ import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.validation.OnCreate;
+import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.util.Collection;
 
@@ -22,7 +24,7 @@ public class UserController {
     private final UserStorage userStorage;
 
     @PostMapping
-    public User create(@Valid @RequestBody User user) { // Добавили @Valid
+    public User create(@Validated(OnCreate.class) @RequestBody User user) { // Добавили @Valid
         validate(user);
         User savedUser = userStorage.save(user);
         log.info("Успешно зарегистрирован пользователь: '{}' (ID: {})", savedUser.getLogin(), savedUser.getId());
@@ -30,13 +32,9 @@ public class UserController {
     }
 
     @PutMapping
-    public User update(@Valid @RequestBody User newUser) { // Добавили @Valid
+    public User update(@Validated(OnUpdate.class) @RequestBody User newUser) { // Добавили @Valid
         validate(newUser);
 
-        if (newUser.getId() == null) {
-            log.warn("Ошибка обновления пользователя: не указан ID");
-            throw new ConditionsNotMetException("Id должен быть указан");
-        }
         if (!userStorage.exists(newUser.getId())) {
             log.warn("Ошибка обновления пользователя: пользователь с ID {} не найден", newUser.getId());
             throw new NotFoundException("Пользователь не найден");

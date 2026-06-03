@@ -1,32 +1,33 @@
 package ru.yandex.practicum.filmorate.model;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import ru.yandex.practicum.filmorate.validation.AfterCinemaBirthDate;
+import ru.yandex.practicum.filmorate.validation.OnCreate;
+import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
 
 @Data
 @EqualsAndHashCode(of = "id")
 public class Film {
+    @Null(groups = OnCreate.class, message = "ID должен быть null при создании")
+    @NotNull(groups = OnUpdate.class, message = "ID обязателен для обновления")
     private Long id;
 
-    @NotBlank(message = "Название не может быть пустым")
+    @NotBlank(groups = OnCreate.class, message = "Название не может быть пустым")
     private String name;
 
-    @Size(max = 200, message = "Максимальная длина описания — 200 символов")
+    @Size(max = 200, groups = {OnCreate.class, OnUpdate.class}, message = "Максимальная длина описания — 200 символов")
     private String description;
 
-    @AfterCinemaBirthDate
-    @NotNull(message = "Дата релиза должна быть указана")
+    @AfterCinemaBirthDate(groups = {OnCreate.class, OnUpdate.class})
+    @NotNull(groups = OnCreate.class, message = "Дата релиза должна быть указана")
     private LocalDate releaseDate;
 
-    @Positive(message = "Продолжительность фильма должна быть больше нуля")
-    private int duration; // просто инт
+    @Positive(groups = {OnCreate.class, OnUpdate.class}, message = "Продолжительность фильма должна быть больше нуля")
+    private Integer duration; // обертка Интеджер - для памяти. там надо дать возможность на null
 }
 

@@ -1,15 +1,17 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import lombok.RequiredArgsConstructor;
-import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.filmorate.exception.ConditionsNotMetException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.validation.OnCreate;
+import ru.yandex.practicum.filmorate.validation.OnUpdate;
+
 import java.util.Collection;
 
 @Slf4j
@@ -22,7 +24,7 @@ public class FilmController {
     // уехал в аннотацию @RequiredArgsConstructor.
 
     @PostMapping
-    public Film create(@Valid @RequestBody Film film) { // Добавили @Valid
+    public Film create(@Validated(OnCreate.class) @RequestBody Film film) { // Добавили @Valid
         validate(film);
         Film savedFilm = filmStorage.save(film);
         log.info("Успешно добавлен новый фильм: '{}' (ID: {})", savedFilm.getName(), savedFilm.getId());
@@ -30,13 +32,9 @@ public class FilmController {
     }
 
     @PutMapping
-    public Film update(@Valid @RequestBody Film newFilm) { // Добавили @Valid
+    public Film update(@Validated(OnUpdate.class) @RequestBody Film newFilm) {
         validate(newFilm);
 
-        if (newFilm.getId() == null) {
-            log.warn("Ошибка обновления фильма: не указан ID");
-            throw new ConditionsNotMetException("Id должен быть указан");
-        }
         if (!filmStorage.exists(newFilm.getId())) {
             log.warn("Ошибка обновления фильма: фильм с ID {} не найден", newFilm.getId());
             throw new NotFoundException("Фильм не найден");

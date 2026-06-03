@@ -11,11 +11,12 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import ru.yandex.practicum.filmorate.exception.ConditionsNotMetException;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.validation.OnCreate;
+import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
 import java.util.Collections;
@@ -36,7 +37,7 @@ class UserControllerTest {
     private Validator validator;
 
     @Mock
-    private UserStorage userStorage; // МЕНЯЕМ НА ИНТЕРФЕЙС
+    private UserStorage userStorage;
 
     private MockMvc mockMvc;
 
@@ -49,56 +50,56 @@ class UserControllerTest {
     @Test
     void validUserPassesValidation() {
         User user = validUser();
-
-        assertTrue(validator.validate(user).isEmpty());
+        // Указываем контекст создания OnCreate
+        assertTrue(validator.validate(user, OnCreate.class).isEmpty());
     }
 
     @Test
     void rejectsBlankEmail() {
         User user = validUser();
         user.setEmail(" ");
-
-        assertEquals(2, validator.validateProperty(user, "email").size());
+        // Добавили группу OnCreate.class
+        assertEquals(2, validator.validateProperty(user, "email", OnCreate.class).size());
     }
 
     @Test
     void rejectsNullEmail() {
         User user = validUser();
         user.setEmail(null);
-
-        assertEquals(1, validator.validateProperty(user, "email").size());
+        // Добавили группу OnCreate.class
+        assertEquals(1, validator.validateProperty(user, "email", OnCreate.class).size());
     }
 
     @Test
     void rejectsInvalidEmail() {
         User user = validUser();
         user.setEmail("mail.example.com");
-
-        assertEquals(1, validator.validateProperty(user, "email").size());
+        // Формат почты проверяется всегда, укажем группу OnCreate.class
+        assertEquals(1, validator.validateProperty(user, "email", OnCreate.class).size());
     }
 
     @Test
     void rejectsBlankLogin() {
         User user = validUser();
         user.setLogin("");
-
-        assertEquals(1, validator.validateProperty(user, "login").size());
+        // Добавили группу OnCreate.class
+        assertEquals(1, validator.validateProperty(user, "login", OnCreate.class).size());
     }
 
     @Test
     void rejectsNullLogin() {
         User user = validUser();
         user.setLogin(null);
-
-        assertEquals(1, validator.validateProperty(user, "login").size());
+        // Добавили группу OnCreate.class
+        assertEquals(1, validator.validateProperty(user, "login", OnCreate.class).size());
     }
 
     @Test
     void rejectsFutureBirthday() {
         User user = validUser();
         user.setBirthday(LocalDate.now().plusDays(1));
-
-        assertEquals(1, validator.validateProperty(user, "birthday").size());
+        // День рождения проверяется всегда, укажем OnCreate.class
+        assertEquals(1, validator.validateProperty(user, "birthday", OnCreate.class).size());
     }
 
     @Test
@@ -106,7 +107,7 @@ class UserControllerTest {
         User user = validUser();
         user.setName("  ");
 
-        assertTrue(validator.validateProperty(user, "name").isEmpty());
+        assertTrue(validator.validateProperty(user, "name", OnCreate.class).isEmpty());
     }
 
     @Test
@@ -137,10 +138,8 @@ class UserControllerTest {
     @Test
     void updateRejectsMissingId() {
         User user = validUser();
-        when(userStorage.findAll()).thenReturn(Collections.emptyList());
-
-        assertThrows(ConditionsNotMetException.class, () -> new UserController(userStorage).update(user));
-        verify(userStorage, never()).update(any());
+        // Теперь за это отвечает аннотация @NotNull(groups = OnUpdate.class) на поле id в модели User
+        assertEquals(1, validator.validateProperty(user, "id", OnUpdate.class).size());
     }
 
     @Test

@@ -19,10 +19,28 @@ public class InMemoryUserStorage implements UserStorage {
     }
 
     @Override
-    public User update(User user) {
-        users.put(user.getId(), user);
-        return user;
+    public User update(User newUser) {
+        // Достаем старого пользователя из памяти
+        User oldUser = users.get(newUser.getId());
+
+        // Обновляем только пришедшие не-null поля
+        if (newUser.getEmail() != null) {
+            oldUser.setEmail(newUser.getEmail());
+        }
+        if (newUser.getLogin() != null) {
+            oldUser.setLogin(newUser.getLogin());
+        }
+        if (newUser.getName() != null) {
+            oldUser.setName(newUser.getName());
+        }
+        if (newUser.getBirthday() != null) {
+            oldUser.setBirthday(newUser.getBirthday());
+        }
+
+        users.put(oldUser.getId(), oldUser);
+        return oldUser;
     }
+
 
     @Override
     public boolean exists(Long id) {
