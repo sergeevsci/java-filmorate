@@ -8,24 +8,28 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
-public class InMemoryUserStorage {
+public class InMemoryUserStorage implements UserStorage {
     private final Map<Long, User> users = new HashMap<>();
 
+    @Override
     public User save(User user) {
         user.setId(getNextId());
         users.put(user.getId(), user);
         return user;
     }
 
+    @Override
     public User update(User user) {
         users.put(user.getId(), user);
         return user;
     }
 
+    @Override
     public boolean exists(Long id) {
         return users.containsKey(id);
     }
 
+    @Override
     public Collection<User> findAll() {
         return users.values();
     }

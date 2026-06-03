@@ -8,24 +8,28 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component // бин на хранилище
-public class InMemoryFilmStorage {
+public class InMemoryFilmStorage implements FilmStorage {
     private final Map<Long, Film> films = new HashMap<>();
 
+    @Override
     public Film save(Film film) {
         film.setId(getNextId());
         films.put(film.getId(), film);
         return film;
     }
 
+    @Override
     public Film update(Film film) {
         films.put(film.getId(), film);
         return film;
     }
 
+    @Override
     public boolean exists(Long id) {
         return films.containsKey(id);
     }
 
+    @Override
     public Collection<Film> findAll() {
         return films.values();
     }
