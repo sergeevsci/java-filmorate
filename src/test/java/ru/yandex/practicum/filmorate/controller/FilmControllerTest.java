@@ -15,9 +15,8 @@ import ru.yandex.practicum.filmorate.exception.ConditionsNotMetException;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
+import ru.yandex.practicum.filmorate.storage.FilmStorage;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Collections;
 
@@ -37,7 +36,7 @@ class FilmControllerTest {
     private Validator validator;
 
     @Mock
-    private InMemoryFilmStorage filmStorage;
+    private FilmStorage filmStorage; // МЕНЯЕМ НА ИНТЕРФЕЙС
 
     private MockMvc mockMvc;
 
@@ -94,13 +93,7 @@ class FilmControllerTest {
         assertEquals(1, validator.validateProperty(film, "releaseDate").size());
     }
 
-    @Test
-    void rejectsNullDuration() {
-        Film film = validFilm();
-        film.setDuration(null);
-
-        assertEquals(1, validator.validateProperty(film, "duration").size());
-    }
+    // ТЕСТ НА NULL DURATION УДАЛЕН: примитив int не может быть null
 
     @Test
     void createRejectsEmptyRequestBody() throws Exception {
@@ -111,21 +104,21 @@ class FilmControllerTest {
     }
 
     @Test
-    void createRejectsReleaseDateBeforeAllowedMinimum() {
+    void rejectsReleaseDateBeforeAllowedMinimum() {
         Film film = validFilm();
         film.setReleaseDate(LocalDate.of(1895, 12, 27));
 
-        assertThrows(ConditionsNotMetException.class, () -> new FilmController(filmStorage).create(film));
-        verify(filmStorage, never()).save(any());
+        // Теперь эту проверку делает валидатор Spring
+        assertEquals(1, validator.validateProperty(film, "releaseDate").size());
     }
 
     @Test
-    void createRejectsZeroDuration() {
+    void rejectsZeroDuration() {
         Film film = validFilm();
-        film.setDuration(Duration.ZERO);
+        film.setDuration(0); // Передаем примитив 0
 
-        assertThrows(ConditionsNotMetException.class, () -> new FilmController(filmStorage).create(film));
-        verify(filmStorage, never()).save(any());
+        // Логика ушла в аннотацию @Positive, проверяем через валидатор Jakarta
+        assertEquals(1, validator.validateProperty(film, "duration").size());
     }
 
     @Test
@@ -143,8 +136,7 @@ class FilmControllerTest {
     @Test
     void updateRejectsMissingId() {
         Film film = validFilm();
-        when(filmStorage.findAll()).thenReturn(Collections.emptyList());
-
+        // Если вы еще не внедрили группы валидации, этот тест проверяет ручной ConditionsNotMetException в контроллере
         assertThrows(ConditionsNotMetException.class, () -> new FilmController(filmStorage).update(film));
         verify(filmStorage, never()).update(any());
     }
@@ -169,7 +161,7 @@ class FilmControllerTest {
     @Test
     void acceptsPositiveDurationBoundary() {
         Film film = validFilm();
-        film.setDuration(Duration.ofMinutes(1));
+        film.setDuration(1); // Передаем 1 минуту как int
 
         assertTrue(validator.validateProperty(film, "duration").isEmpty());
     }
@@ -179,7 +171,7 @@ class FilmControllerTest {
         film.setName("Film");
         film.setDescription("Description");
         film.setReleaseDate(LocalDate.of(2000, 1, 1));
-        film.setDuration(Duration.ofMinutes(90));
+        film.setDuration(90); // Передаем обычное число int
         return film;
     }
 }

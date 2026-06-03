@@ -15,7 +15,7 @@ import ru.yandex.practicum.filmorate.exception.ConditionsNotMetException;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
+import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
 import java.util.Collections;
@@ -36,7 +36,7 @@ class UserControllerTest {
     private Validator validator;
 
     @Mock
-    private InMemoryUserStorage userStorage;
+    private UserStorage userStorage; // МЕНЯЕМ НА ИНТЕРФЕЙС
 
     private MockMvc mockMvc;
 

@@ -56,26 +56,9 @@ public class FilmController {
 
     private void validate(Film film) {
         // Проверки на name, description и null для duration теперь под капотом Spring
+        // проверка на год фильма тоже теперь у самого Film объекта. Висит аннотация
 
-        // Кастомная проверка даты релиза - ее не сделать аннотациями
-        LocalDate cinemaBirthDate = LocalDate.of(1895, 12, 28);
-        // Проверка на null перед вызовом методов даты
-        if (film.getReleaseDate() != null) { // для тестов Мок, а то падаем с Null
-            if (film.getReleaseDate().isBefore(cinemaBirthDate)) {
-                log.warn("Валидация фильма провалена: дата релиза раньше 28.12.1895");
-                throw new ConditionsNotMetException("Дата релиза должна быть не раньше 28 декабря 1895 года");
-            }
-        }
-
-        // Проверка на null перед вызовом методов duration
-        if (film.getDuration() != null) {
-            if (film.getDuration().isNegative() || film.getDuration().isZero()) {
-                log.warn("Валидация фильма провалена: некорректная продолжительность");
-                throw new ConditionsNotMetException("Продолжительность фильма должна быть положительным числом");
-            }
-        }
-
-        // Проверка на дубликаты
+        // Проверка на дубликаты только осталась
         if (film.getId() == null && film.getReleaseDate() != null) {
             boolean isDuplicate = filmStorage.findAll().stream()
                     .anyMatch(f -> f.getName().equalsIgnoreCase(film.getName())

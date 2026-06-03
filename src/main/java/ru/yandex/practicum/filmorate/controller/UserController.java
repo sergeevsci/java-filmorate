@@ -9,7 +9,6 @@ import ru.yandex.practicum.filmorate.exception.ConditionsNotMetException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.util.Collection;
@@ -21,10 +20,6 @@ import java.util.Collection;
 public class UserController {
 
     private final UserStorage userStorage;
-
-    public UserController(InMemoryUserStorage userStorage) {
-        this.userStorage = userStorage;
-    }
 
     @PostMapping
     public User create(@Valid @RequestBody User user) { // Добавили @Valid
