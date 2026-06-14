@@ -24,7 +24,7 @@ public class FilmController {
     // уехал в аннотацию @RequiredArgsConstructor.
 
     @PostMapping
-    public Film create(@Validated(OnCreate.class) @RequestBody Film film) { // Добавили @Valid
+    public Film create(@Validated(OnCreate.class) @RequestBody Film film) { // убрал валид, теперь валидатед
         validate(film);
         Film savedFilm = filmStorage.save(film);
         log.info("Успешно добавлен новый фильм: '{}' (ID: {})", savedFilm.getName(), savedFilm.getId());
