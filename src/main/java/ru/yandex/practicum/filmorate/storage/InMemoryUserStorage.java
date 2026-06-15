@@ -20,10 +20,8 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public User update(User newUser) {
-        // Достаем старого пользователя из памяти
         User oldUser = users.get(newUser.getId());
 
-        // Обновляем только пришедшие не-null поля
         if (newUser.getEmail() != null) {
             oldUser.setEmail(newUser.getEmail());
         }

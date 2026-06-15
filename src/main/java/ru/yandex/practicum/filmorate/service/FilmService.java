@@ -42,6 +42,55 @@ public class FilmService {
         return filmStorage.findAll();
     }
 
+    public void addLike(Long filmId, Long userId) {
+        // Проверяем, что пользователь существует
+        userService.getFriends(userId); // Если пользователя нет, метод сбросит NotFoundException
+
+        Film film = getFilmOrThrow(filmId);
+
+        film.getLikes().add(userId);
+        filmStorage.update(film); // Сохраняем изменения в хранилище
+
+        log.info("Пользователь с ID {} поставил лайк фильму с ID {}", userId, filmId);
+    }
+
+    public void removeLike(Long filmId, Long userId) {
+        userService.getFriends(userId);
+
+        Film film = getFilmOrThrow(filmId);
+
+        if (!film.getLikes().contains(userId)) {
+            log.warn("Пользователь с ID {} не лайкал фильм с ID {}", userId, filmId);
+            throw new NotFoundException("Лайк от данного пользователя не найден");
+        }
+
+        film.getLikes().remove(userId);
+        filmStorage.update(film);
+
+        log.info("Пользователь с ID {} удалил лайк с фильма с ID {}", userId, filmId);
+    }
+
+    public Collection<Film> getPopularFilms(Integer count) {
+        // Если count не передан в контроллере, используем 10
+        int limit = (count == null || count <= 0) ? 10 : count;
+
+        return filmStorage.findAll().stream()
+                // Сортируем по убыванию количества лайков
+                .sorted((f1, f2) -> Integer.compare(f2.getLikes().size(), f1.getLikes().size()))
+                .limit(limit)
+                .toList();
+    }
+
+    private Film getFilmOrThrow(Long id) {
+        return filmStorage.findAll().stream()
+                .filter(f -> f.getId().equals(id))
+                .findFirst()
+                .orElseThrow(() -> {
+                    log.warn("Фильм с ID {} не найден", id);
+                    return new NotFoundException("Фильм с ID " + id + " не найден");
+                });
+    }
+
     private void validate(Film film) {
         if (film.getId() == null && film.getReleaseDate() != null) {
             boolean isDuplicate = filmStorage.findAll().stream()

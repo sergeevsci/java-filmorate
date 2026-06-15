@@ -9,6 +9,8 @@ import ru.yandex.practicum.filmorate.validation.OnCreate;
 import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @EqualsAndHashCode(of = "id")
@@ -29,5 +31,7 @@ public class Film {
 
     @Positive(groups = {OnCreate.class, OnUpdate.class}, message = "Продолжительность фильма должна быть больше нуля")
     private Integer duration; // обертка Интеджер - для памяти. там надо дать возможность на null
+
+    private final Set<Long> likes = new HashSet<>();
 }
 
