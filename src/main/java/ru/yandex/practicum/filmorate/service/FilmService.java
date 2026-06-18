@@ -54,14 +54,14 @@ public class FilmService {
         log.info("Пользователь с ID {} поставил лайк фильму с ID {}", userId, filmId);
     }
 
-    public void removeLike(Long filmId, Long userId) {
-        userService.getFriends(userId);
+    public void deleteLike(Long filmId, Long userId) {
+        userService.getUserOrThrow(userId);
 
         Film film = getFilmOrThrow(filmId);
 
         if (!film.getLikes().contains(userId)) {
-            log.warn("Пользователь с ID {} не лайкал фильм с ID {}", userId, filmId);
-            throw new NotFoundException("Лайк от данного пользователя не найден");
+            log.warn("Пользователь ID {} не ставил лайк фильму ID {}", userId, filmId);
+            throw new NotFoundException("Лайк от пользователя с ID " + userId + " не найден");
         }
 
         film.getLikes().remove(userId);
@@ -72,7 +72,7 @@ public class FilmService {
 
     public Collection<Film> getPopularFilms(Integer count) {
         // Если count не передан в контроллере, используем 10
-        int limit = (count == null || count <= 0) ? 10 : count;
+        int limit = (count <= 0) ? 10 : count;
 
         return filmStorage.findAll().stream()
                 // Сортируем по убыванию количества лайков
@@ -82,9 +82,7 @@ public class FilmService {
     }
 
     private Film getFilmOrThrow(Long id) {
-        return filmStorage.findAll().stream()
-                .filter(f -> f.getId().equals(id))
-                .findFirst()
+        return filmStorage.findById(id) // быстрый поиск тк у нас хэшмапа
                 .orElseThrow(() -> {
                     log.warn("Фильм с ID {} не найден", id);
                     return new NotFoundException("Фильм с ID " + id + " не найден");

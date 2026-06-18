@@ -105,16 +105,13 @@ public class UserService {
                 .toList();
     }
 
-    private User getUserOrThrow(Long id) { // поиск пользователя по id. если нет - exception
-        return userStorage.findAll().stream()
-                .filter(u -> u.getId().equals(id))
-                .findFirst()
+    public User getUserOrThrow(Long id) {
+        return userStorage.findById(id)  // Быстрый поиск O(1)
                 .orElseThrow(() -> {
                     log.warn("Пользователь с ID {} не найден", id);
                     return new NotFoundException("Пользователь с ID " + id + " не найден");
                 });
     }
-
 
     private void validate(User user) {
         if (user.getLogin() != null && user.getLogin().contains(" ")) {
