@@ -74,11 +74,6 @@ public class UserService {
         boolean removedFromUser = user.getFriends().remove(friendId);
         boolean removedFromFriend = friend.getFriends().remove(userId);
 
-        if (!removedFromUser || !removedFromFriend) {
-            log.warn("Пользователи ID {} и ID {} не были друзьями", userId, friendId);
-            throw new ConditionsNotMetException("Пользователи не состоят в друзьях");
-        }
-
         userStorage.update(user);
         userStorage.update(friend);
 
