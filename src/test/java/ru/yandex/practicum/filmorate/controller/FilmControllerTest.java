@@ -124,16 +124,19 @@ class FilmControllerTest {
         film.setId(1L);
         when(filmService.create(any(Film.class))).thenReturn(film);
 
+        // Переносим JSON на новую строку, чтобы скобки не слипались
+        String jsonContent = """
+            {
+              "name": "Film",
+              "description": "Description",
+              "releaseDate": "2000-01-01",
+              "duration": 90
+            }
+            """;
+
         mockMvc.perform(post("/films")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "name": "Film",
-                                  "description": "Description",
-                                  "releaseDate": "2000-01-01",
-                                  "duration": 90
-                                }
-                                """))
+                        .content(jsonContent)) // Передаем готовую переменную
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
 
@@ -153,17 +156,20 @@ class FilmControllerTest {
         film.setId(1L);
         when(filmService.update(any(Film.class))).thenReturn(film);
 
+        // Выносим текстовый блок в отдельную переменную
+        String jsonContent = """
+            {
+              "id": 1,
+              "name": "Film",
+              "description": "Description",
+              "releaseDate": "2000-01-01",
+              "duration": 90
+            }
+            """;
+
         mockMvc.perform(put("/films")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "id": 1,
-                                  "name": "Film",
-                                  "description": "Description",
-                                  "releaseDate": "2000-01-01",
-                                  "duration": 90
-                                }
-                                """))
+                        .content(jsonContent)) // Используем переменную
                 .andExpect(status().isOk());
 
         verify(filmService).update(any(Film.class));
