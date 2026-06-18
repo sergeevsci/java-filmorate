@@ -11,10 +11,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.service.UserService;
 import ru.yandex.practicum.filmorate.validation.OnCreate;
 import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
@@ -22,13 +20,15 @@ import java.time.LocalDate;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,20 +37,20 @@ class UserControllerTest {
     private Validator validator;
 
     @Mock
-    private UserStorage userStorage;
+    private UserService userService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         validator = Validation.buildDefaultValidatorFactory().getValidator();
-        mockMvc = MockMvcBuilders.standaloneSetup(new UserController(userStorage)).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(new UserController(userService)).build();
     }
 
     @Test
     void validUserPassesValidation() {
         User user = validUser();
-        // Указываем контекст создания OnCreate
+
         assertTrue(validator.validate(user, OnCreate.class).isEmpty());
     }
 
@@ -58,7 +58,7 @@ class UserControllerTest {
     void rejectsBlankEmail() {
         User user = validUser();
         user.setEmail(" ");
-        // Добавили группу OnCreate.class
+
         assertEquals(2, validator.validateProperty(user, "email", OnCreate.class).size());
     }
 
@@ -66,7 +66,7 @@ class UserControllerTest {
     void rejectsNullEmail() {
         User user = validUser();
         user.setEmail(null);
-        // Добавили группу OnCreate.class
+
         assertEquals(1, validator.validateProperty(user, "email", OnCreate.class).size());
     }
 
@@ -74,7 +74,7 @@ class UserControllerTest {
     void rejectsInvalidEmail() {
         User user = validUser();
         user.setEmail("mail.example.com");
-        // Формат почты проверяется всегда, укажем группу OnCreate.class
+
         assertEquals(1, validator.validateProperty(user, "email", OnCreate.class).size());
     }
 
@@ -82,7 +82,7 @@ class UserControllerTest {
     void rejectsBlankLogin() {
         User user = validUser();
         user.setLogin("");
-        // Добавили группу OnCreate.class
+
         assertEquals(1, validator.validateProperty(user, "login", OnCreate.class).size());
     }
 
@@ -90,7 +90,7 @@ class UserControllerTest {
     void rejectsNullLogin() {
         User user = validUser();
         user.setLogin(null);
-        // Добавили группу OnCreate.class
+
         assertEquals(1, validator.validateProperty(user, "login", OnCreate.class).size());
     }
 
@@ -98,7 +98,7 @@ class UserControllerTest {
     void rejectsFutureBirthday() {
         User user = validUser();
         user.setBirthday(LocalDate.now().plusDays(1));
-        // День рождения проверяется всегда, укажем OnCreate.class
+
         assertEquals(1, validator.validateProperty(user, "birthday", OnCreate.class).size());
     }
 
@@ -111,44 +111,54 @@ class UserControllerTest {
     }
 
     @Test
-    void createReplacesBlankNameWithLogin() {
+    void createDelegatesToService() throws Exception {
         User user = validUser();
-        user.setName(" ");
-        when(userStorage.findAll()).thenReturn(Collections.emptyList());
-        when(userStorage.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        user.setId(1L);
+        when(userService.create(any(User.class))).thenReturn(user);
 
-        User created = new UserController(userStorage).create(user);
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "mail@example.com",
+                                  "login": "login",
+                                  "name": "name",
+                                  "birthday": "2000-01-01"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
 
-        assertEquals("login", created.getName());
-        verify(userStorage).save(any(User.class));
-    }
-
-    @Test
-    void createRejectsDuplicateLoginOrEmail() {
-        User existing = validUser();
-        existing.setId(1L);
-        when(userStorage.findAll()).thenReturn(Collections.singletonList(existing));
-
-        User duplicate = validUser();
-
-        assertThrows(DuplicatedDataException.class, () -> new UserController(userStorage).create(duplicate));
-        verify(userStorage, never()).save(any());
+        verify(userService).create(any(User.class));
     }
 
     @Test
     void updateRejectsMissingId() {
         User user = validUser();
-        // Теперь за это отвечает аннотация @NotNull(groups = OnUpdate.class) на поле id в модели User
+
         assertEquals(1, validator.validateProperty(user, "id", OnUpdate.class).size());
     }
 
     @Test
-    void updateRejectsUnknownUser() {
+    void updateDelegatesToService() throws Exception {
         User user = validUser();
-        user.setId(99L);
+        user.setId(1L);
+        when(userService.update(any(User.class))).thenReturn(user);
 
-        assertThrows(NotFoundException.class, () -> new UserController(userStorage).update(user));
-        verify(userStorage, never()).update(any());
+        mockMvc.perform(put("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "id": 1,
+                                  "email": "mail@example.com",
+                                  "login": "login",
+                                  "name": "name",
+                                  "birthday": "2000-01-01"
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        verify(userService).update(any(User.class));
     }
 
     @Test
@@ -157,6 +167,52 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(""))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void findAllDelegatesToService() throws Exception {
+        when(userService.findAll()).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isOk());
+
+        verify(userService).findAll();
+    }
+
+    @Test
+    void addFriendDelegatesToService() throws Exception {
+        mockMvc.perform(put("/users/1/friends/2"))
+                .andExpect(status().isOk());
+
+        verify(userService).addFriend(1L, 2L);
+    }
+
+    @Test
+    void deleteFriendDelegatesToService() throws Exception {
+        mockMvc.perform(delete("/users/1/friends/2"))
+                .andExpect(status().isOk());
+
+        verify(userService).deleteFriend(1L, 2L);
+    }
+
+    @Test
+    void findFriendsDelegatesToService() throws Exception {
+        when(userService.getFriends(1L)).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/users/1/friends"))
+                .andExpect(status().isOk());
+
+        verify(userService).getFriends(1L);
+    }
+
+    @Test
+    void findCommonFriendsDelegatesToService() throws Exception {
+        when(userService.getCommonFriends(1L, 2L)).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/users/1/friends/common/2"))
+                .andExpect(status().isOk());
+
+        verify(userService).getCommonFriends(1L, 2L);
     }
 
     private User validUser() {
