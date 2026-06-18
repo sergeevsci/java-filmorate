@@ -10,6 +10,8 @@ import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -60,17 +62,27 @@ public class UserService {
         log.info("Пользователи ID {} и ID {} теперь друзья", userId, friendId);
     }
 
-    public void removeFriend(Long userId, Long friendId) {
+    public void deleteFriend(Long userId, Long friendId) {
+        if (userId.equals(friendId)) {
+            log.warn("Попытка удалить самого себя из друзей: ID {}", userId);
+            throw new ConditionsNotMetException("Пользователь не может удалить сам себя из друзей");
+        }
+
         User user = getUserOrThrow(userId);
         User friend = getUserOrThrow(friendId);
 
-        user.getFriends().remove(friendId);
-        friend.getFriends().remove(userId);
+        boolean removedFromUser = user.getFriends().remove(friendId);
+        boolean removedFromFriend = friend.getFriends().remove(userId);
+
+        if (!removedFromUser || !removedFromFriend) {
+            log.warn("Пользователи ID {} и ID {} не были друзьями", userId, friendId);
+            throw new ConditionsNotMetException("Пользователи не состоят в друзьях");
+        }
 
         userStorage.update(user);
         userStorage.update(friend);
 
-        log.info("Пользователи ID {} и ID {} удалены из друзей", userId, friendId);
+        log.info("Пользователи ID {} и ID {} больше не друзья", userId, friendId);
     }
 
     public Collection<User> getFriends(Long userId) {
@@ -84,8 +96,11 @@ public class UserService {
         User user = getUserOrThrow(userId);
         User otherUser = getUserOrThrow(otherId);
 
-        return user.getFriends().stream()
-                .filter(otherUser.getFriends()::contains)
+        Set<Long> commonIds = new HashSet<>(user.getFriends());
+
+        commonIds.retainAll(otherUser.getFriends());
+
+        return commonIds.stream()
                 .map(this::getUserOrThrow)
                 .toList();
     }
