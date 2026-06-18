@@ -125,14 +125,8 @@ class FilmControllerTest {
         when(filmService.create(any(Film.class))).thenReturn(film);
 
         // Переносим JSON на новую строку, чтобы скобки не слипались
-        String jsonContent = """
-            {
-              "name": "Film",
-              "description": "Description",
-              "releaseDate": "2000-01-01",
-              "duration": 90
-            }
-            """;
+        String jsonContent = "{\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\",\"duration\":90}";
+
 
         mockMvc.perform(post("/films")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -157,15 +151,8 @@ class FilmControllerTest {
         when(filmService.update(any(Film.class))).thenReturn(film);
 
         // Выносим текстовый блок в отдельную переменную
-        String jsonContent = """
-            {
-              "id": 1,
-              "name": "Film",
-              "description": "Description",
-              "releaseDate": "2000-01-01",
-              "duration": 90
-            }
-            """;
+        String jsonContent = "{\"id\":1,\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\",\"duration\":90}";
+
 
         mockMvc.perform(put("/films")
                         .contentType(MediaType.APPLICATION_JSON)

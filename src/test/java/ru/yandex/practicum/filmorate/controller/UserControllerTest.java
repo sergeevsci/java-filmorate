@@ -117,14 +117,8 @@ class UserControllerTest {
         when(userService.create(any(User.class))).thenReturn(user);
 
         // Выносим JSON в переменную, чтобы убрать конфликт фигурных скобок
-        String jsonContent = """
-            {
-              "email": "mail@example.com",
-              "login": "login",
-              "name": "name",
-              "birthday": "2000-01-01"
-            }
-            """;
+        String jsonContent = "{\"email\":\"mail@example.com\",\"login\":\"login\",\"name\":\"name\",\"birthday\":\"2000-01-01\"}";
+
 
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -149,15 +143,8 @@ class UserControllerTest {
         when(userService.update(any(User.class))).thenReturn(user);
 
         // Выносим текстовый блок, избавляясь от Leading braces
-        String jsonContent = """
-            {
-              "id": 1,
-              "email": "mail@example.com",
-              "login": "login",
-              "name": "name",
-              "birthday": "2000-01-01"
-            }
-            """;
+        String jsonContent = "{\"id\":1,\"email\":\"mail@example.com\",\"login\":\"login\",\"name\":\"name\",\"birthday\":\"2000-01-01\"}";
+
 
         mockMvc.perform(put("/users")
                         .contentType(MediaType.APPLICATION_JSON)
