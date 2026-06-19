@@ -88,8 +88,8 @@ class UserServiceTest {
 
         assertEquals(List.of(2L), List.copyOf(user.getFriends()));
         assertEquals(List.of(1L), List.copyOf(friend.getFriends()));
-        verify(userStorage).update(user);
-        verify(userStorage).update(friend);
+        // Хранилище больше не обновляем при манипуляциях со списками
+        verify(userStorage, never()).update(any());
     }
 
     @Test
@@ -111,8 +111,8 @@ class UserServiceTest {
 
         assertEquals(List.of(), List.copyOf(user.getFriends()));
         assertEquals(List.of(), List.copyOf(friend.getFriends()));
-        verify(userStorage).update(user);
-        verify(userStorage).update(friend);
+        // Хранилище больше не обновляем при манипуляциях со списками
+        verify(userStorage, never()).update(any());
     }
 
     @Test

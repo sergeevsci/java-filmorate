@@ -44,12 +44,11 @@ public class FilmService {
 
     public void addLike(Long filmId, Long userId) {
         // Проверяем, что пользователь существует
-        userService.getFriends(userId); // Если пользователя нет, метод сбросит NotFoundException
+        userService.getUserOrThrow(userId); // Если пользователя нет, метод сбросит NotFoundException
 
         Film film = getFilmOrThrow(filmId);
 
         film.getLikes().add(userId);
-        filmStorage.update(film); // Сохраняем изменения в хранилище
 
         log.info("Пользователь с ID {} поставил лайк фильму с ID {}", userId, filmId);
     }
@@ -61,7 +60,6 @@ public class FilmService {
         boolean removed = film.getLikes().remove(userId);
 
         if (removed) {
-            filmStorage.update(film);
             log.info("Пользователь с ID {} удалил лайк с фильма с ID {}", userId, filmId);
         } else {
             // Если лайка и так не было - логируем и выходим (200 OK) - идемпотентность на Delete

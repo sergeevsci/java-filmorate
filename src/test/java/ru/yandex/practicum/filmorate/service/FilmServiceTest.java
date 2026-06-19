@@ -73,8 +73,8 @@ class FilmServiceTest {
         filmService.addLike(1L, 2L);
 
         assertEquals(List.of(2L), List.copyOf(film.getLikes()));
-        verify(userService).getFriends(2L);
-        verify(filmStorage).update(film);
+        verify(userService).getUserOrThrow(2L); // Проверяем getUserOrThrow вместо getFriends
+        verify(filmStorage, never()).update(any()); // Хранилище больше не обновляем вручную
     }
 
     @Test
@@ -82,7 +82,7 @@ class FilmServiceTest {
         when(filmStorage.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(NotFoundException.class, () -> filmService.addLike(99L, 1L));
-        verify(userService).getFriends(1L);
+        verify(userService).getUserOrThrow(1L); // Проверяем getUserOrThrow вместо getFriends
         verify(filmStorage, never()).update(any());
     }
 
@@ -96,7 +96,7 @@ class FilmServiceTest {
 
         assertEquals(List.of(), List.copyOf(film.getLikes()));
         verify(userService).getUserOrThrow(2L);
-        verify(filmStorage).update(film);
+        verify(filmStorage, never()).update(any()); // Хранилище больше не обновляем вручную
     }
 
     @Test

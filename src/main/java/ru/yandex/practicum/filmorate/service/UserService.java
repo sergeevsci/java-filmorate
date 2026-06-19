@@ -56,9 +56,6 @@ public class UserService {
         user.getFriends().add(friendId); // проверок одобрения нет
         friend.getFriends().add(userId); // Взаимное добавление (друг у друга в друзьях)
 
-        userStorage.update(user);
-        userStorage.update(friend);
-
         log.info("Пользователи ID {} и ID {} теперь друзья", userId, friendId);
     }
 
@@ -71,11 +68,8 @@ public class UserService {
         User user = getUserOrThrow(userId);
         User friend = getUserOrThrow(friendId);
 
-        boolean removedFromUser = user.getFriends().remove(friendId);
-        boolean removedFromFriend = friend.getFriends().remove(userId);
-
-        userStorage.update(user);
-        userStorage.update(friend);
+        user.getFriends().remove(friendId);
+        friend.getFriends().remove(userId);
 
         log.info("Пользователи ID {} и ID {} больше не друзья", userId, friendId);
     }
