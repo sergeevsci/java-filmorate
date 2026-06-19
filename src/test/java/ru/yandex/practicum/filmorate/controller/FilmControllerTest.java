@@ -11,24 +11,24 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.validation.OnCreate; // ИМПОРТ ГРУППЫ
-import ru.yandex.practicum.filmorate.validation.OnUpdate; // ИМПОРТ ГРУППЫ
+import ru.yandex.practicum.filmorate.service.FilmService;
+import ru.yandex.practicum.filmorate.validation.OnCreate;
+import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
 import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,20 +37,20 @@ class FilmControllerTest {
     private Validator validator;
 
     @Mock
-    private FilmStorage filmStorage;
+    private FilmService filmService;
 
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         validator = Validation.buildDefaultValidatorFactory().getValidator();
-        mockMvc = MockMvcBuilders.standaloneSetup(new FilmController(filmStorage)).build();
+        mockMvc = MockMvcBuilders.standaloneSetup(new FilmController(filmService)).build();
     }
 
     @Test
     void validFilmPassesValidation() {
         Film film = validFilm();
-        // Передаем OnCreate.class, чтобы валидатор знал, какой контекст проверять
+
         assertTrue(validator.validate(film, OnCreate.class).isEmpty());
     }
 
@@ -58,7 +58,7 @@ class FilmControllerTest {
     void rejectsBlankName() {
         Film film = validFilm();
         film.setName(" ");
-        // Добавили OnCreate.class в параметры
+
         assertEquals(1, validator.validateProperty(film, "name", OnCreate.class).size());
     }
 
@@ -66,7 +66,7 @@ class FilmControllerTest {
     void rejectsNullName() {
         Film film = validFilm();
         film.setName(null);
-        // Добавили OnCreate.class в параметры
+
         assertEquals(1, validator.validateProperty(film, "name", OnCreate.class).size());
     }
 
@@ -74,7 +74,7 @@ class FilmControllerTest {
     void rejectsTooLongDescription() {
         Film film = validFilm();
         film.setDescription("a".repeat(201));
-        // Описание проверяется в обеих группах, укажем OnCreate.class
+
         assertEquals(1, validator.validateProperty(film, "description", OnCreate.class).size());
     }
 
@@ -119,31 +119,47 @@ class FilmControllerTest {
     }
 
     @Test
-    void createRejectsDuplicateFilmForSameYear() {
-        Film existing = validFilm();
-        existing.setId(1L);
-        when(filmStorage.findAll()).thenReturn(Collections.singletonList(existing));
+    void createDelegatesToService() throws Exception {
+        Film film = validFilm();
+        film.setId(1L);
+        when(filmService.create(any(Film.class))).thenReturn(film);
 
-        Film duplicate = validFilm();
+        // Переносим JSON на новую строку, чтобы скобки не слипались
+        String jsonContent = "{\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\",\"duration\":90}";
 
-        assertThrows(DuplicatedDataException.class, () -> new FilmController(filmStorage).create(duplicate));
-        verify(filmStorage, never()).save(any());
+
+        mockMvc.perform(post("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonContent)) // Передаем готовую переменную
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+
+        verify(filmService).create(any(Film.class));
     }
 
     @Test
     void updateRejectsMissingId() {
         Film film = validFilm();
-        // Теперь отсутствие ID при PUT запросе ловит сам Spring Validation через OnUpdate.class
+
         assertEquals(1, validator.validateProperty(film, "id", OnUpdate.class).size());
     }
 
     @Test
-    void updateRejectsUnknownFilm() {
+    void updateDelegatesToService() throws Exception {
         Film film = validFilm();
-        film.setId(77L);
+        film.setId(1L);
+        when(filmService.update(any(Film.class))).thenReturn(film);
 
-        assertThrows(NotFoundException.class, () -> new FilmController(filmStorage).update(film));
-        verify(filmStorage, never()).update(any());
+        // Выносим текстовый блок в отдельную переменную
+        String jsonContent = "{\"id\":1,\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\",\"duration\":90}";
+
+
+        mockMvc.perform(put("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonContent)) // Используем переменную
+                .andExpect(status().isOk());
+
+        verify(filmService).update(any(Film.class));
     }
 
     @Test
@@ -160,6 +176,52 @@ class FilmControllerTest {
         film.setDuration(1);
 
         assertTrue(validator.validateProperty(film, "duration", OnCreate.class).isEmpty());
+    }
+
+    @Test
+    void findAllDelegatesToService() throws Exception {
+        when(filmService.findAll()).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/films"))
+                .andExpect(status().isOk());
+
+        verify(filmService).findAll();
+    }
+
+    @Test
+    void getPopularUsesDefaultCount() throws Exception {
+        when(filmService.getPopularFilms(10)).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/films/popular"))
+                .andExpect(status().isOk());
+
+        verify(filmService).getPopularFilms(10);
+    }
+
+    @Test
+    void getPopularPassesCountToService() throws Exception {
+        when(filmService.getPopularFilms(2)).thenReturn(Collections.emptyList());
+
+        mockMvc.perform(get("/films/popular?count=2"))
+                .andExpect(status().isOk());
+
+        verify(filmService).getPopularFilms(2);
+    }
+
+    @Test
+    void addLikeDelegatesToService() throws Exception {
+        mockMvc.perform(put("/films/1/like/2"))
+                .andExpect(status().isOk());
+
+        verify(filmService).addLike(1L, 2L);
+    }
+
+    @Test
+    void deleteLikeDelegatesToService() throws Exception {
+        mockMvc.perform(delete("/films/1/like/2"))
+                .andExpect(status().isOk());
+
+        verify(filmService).deleteLike(1L, 2L);
     }
 
     private Film validFilm() {
