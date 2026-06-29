@@ -7,6 +7,8 @@ import ru.yandex.practicum.filmorate.validation.OnCreate;
 import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
 @Data
 @EqualsAndHashCode(of = "id")
@@ -26,5 +28,7 @@ public class User {
 
     @PastOrPresent(groups = {OnCreate.class, OnUpdate.class}, message = "Дата рождения не может быть в будущем")
     private LocalDate birthday;
+
+    private final Set<Long> friends = new HashSet<>();
 }
 

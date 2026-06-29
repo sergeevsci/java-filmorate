@@ -6,6 +6,7 @@ import ru.yandex.practicum.filmorate.model.User;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class InMemoryUserStorage implements UserStorage {
@@ -20,10 +21,8 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public User update(User newUser) {
-        // Достаем старого пользователя из памяти
         User oldUser = users.get(newUser.getId());
 
-        // Обновляем только пришедшие не-null поля
         if (newUser.getEmail() != null) {
             oldUser.setEmail(newUser.getEmail());
         }
@@ -41,6 +40,10 @@ public class InMemoryUserStorage implements UserStorage {
         return oldUser;
     }
 
+    @Override
+    public Optional<User> findById(Long id) {
+        return Optional.ofNullable(users.get(id));
+    }
 
     @Override
     public boolean exists(Long id) {
