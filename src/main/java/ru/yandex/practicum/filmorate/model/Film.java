@@ -10,6 +10,7 @@ import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Data
@@ -32,6 +33,13 @@ public class Film {
     @Positive(groups = {OnCreate.class, OnUpdate.class}, message = "Продолжительность фильма должна быть больше нуля")
     private Integer duration; // обертка Интеджер - для памяти. там надо дать возможность на null
 
-    private final Set<Long> likes = new HashSet<>();
+    private Set<Long> likes = new HashSet<>();
+
+    // Жанры (Set из рекордов Genre)
+    private Set<@NotNull(groups = {OnCreate.class, OnUpdate.class}, message = "Жанр не может быть null") Genre> genres = new LinkedHashSet<>();
+
+    // Рейтинг MPA (одиночный рекорд Mpa)
+    @NotNull(groups = OnCreate.class, message = "Рейтинг MPA должен быть указан")
+    private Mpa mpa;
 }
 
