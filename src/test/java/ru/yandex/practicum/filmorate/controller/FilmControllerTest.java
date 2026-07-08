@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.validation.OnCreate;
 import ru.yandex.practicum.filmorate.validation.OnUpdate;
@@ -124,13 +125,12 @@ class FilmControllerTest {
         film.setId(1L);
         when(filmService.create(any(Film.class))).thenReturn(film);
 
-        // Переносим JSON на новую строку, чтобы скобки не слипались
-        String jsonContent = "{\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\",\"duration\":90}";
-
+        String jsonContent = "{\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\","
+                + "\"duration\":90,\"mpa\":{\"id\":1,\"name\":\"G\"}}";
 
         mockMvc.perform(post("/films")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonContent)) // Передаем готовую переменную
+                        .content(jsonContent))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
 
@@ -150,13 +150,12 @@ class FilmControllerTest {
         film.setId(1L);
         when(filmService.update(any(Film.class))).thenReturn(film);
 
-        // Выносим текстовый блок в отдельную переменную
-        String jsonContent = "{\"id\":1,\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\",\"duration\":90}";
-
+        String jsonContent = "{\"id\":1,\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\","
+                + "\"duration\":90,\"mpa\":{\"id\":1,\"name\":\"G\"}}";
 
         mockMvc.perform(put("/films")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonContent)) // Используем переменную
+                        .content(jsonContent))
                 .andExpect(status().isOk());
 
         verify(filmService).update(any(Film.class));
@@ -230,6 +229,7 @@ class FilmControllerTest {
         film.setDescription("Description");
         film.setReleaseDate(LocalDate.of(2000, 1, 1));
         film.setDuration(90);
+        film.setMpa(new Mpa(1, "G"));
         return film;
     }
 }
