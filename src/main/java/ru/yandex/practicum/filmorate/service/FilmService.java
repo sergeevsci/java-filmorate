@@ -1,7 +1,7 @@
 package ru.yandex.practicum.filmorate.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
@@ -12,11 +12,15 @@ import java.util.Collection;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class FilmService {
 
     private final FilmStorage filmStorage;
     private final UserService userService;
+
+    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage, UserService userService) {
+        this.filmStorage = filmStorage;
+        this.userService = userService;
+    }
 
     public Film create(Film film) {
         validate(film);
@@ -49,6 +53,7 @@ public class FilmService {
         Film film = getFilmOrThrow(filmId);
 
         film.getLikes().add(userId);
+        filmStorage.addLike(filmId, userId);
 
         log.info("Пользователь с ID {} поставил лайк фильму с ID {}", userId, filmId);
     }
@@ -60,6 +65,7 @@ public class FilmService {
         boolean removed = film.getLikes().remove(userId);
 
         if (removed) {
+            filmStorage.deleteLike(filmId, userId);
             log.info("Пользователь с ID {} удалил лайк с фильма с ID {}", userId, filmId);
         } else {
             // Если лайка и так не было - логируем и выходим (200 OK) - идемпотентность на Delete
