@@ -1,0 +1,19 @@
+services:
+  filmorate-backend:
+    build: .
+    container_name: filmorate-backend
+
+    ports:
+      - "8082:8080"
+
+    environment:
+      DB_USERNAME: dbadmin
+      DB_PASSWORD: 1
+
+    volumes:
+      - filmorate-db:/app/db
+
+    restart: unless-stopped
+
+volumes:
+  filmorate-db:
