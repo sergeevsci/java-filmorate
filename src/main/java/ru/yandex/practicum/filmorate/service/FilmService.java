@@ -46,6 +46,10 @@ public class FilmService {
         return filmStorage.findAll();
     }
 
+    public Film findById(Long id) {
+        return getFilmOrThrow(id);
+    }
+
     public void addLike(Long filmId, Long userId) {
         // Проверяем, что пользователь существует
         userService.getUserOrThrow(userId); // Если пользователя нет, метод сбросит NotFoundException
