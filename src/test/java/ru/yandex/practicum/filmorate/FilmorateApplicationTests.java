@@ -72,6 +72,11 @@ class FilmorateApplicationTests {
     }
 
     @Test
+    void testUserExistsReturnsFalseForUnknownId() {
+        assertThat(userStorage.exists(999L)).isFalse();
+    }
+
+    @Test
     void testUpdateUser() {
         User savedUser = userStorage.save(makeUser("third"));
         User update = new User();
@@ -152,6 +157,11 @@ class FilmorateApplicationTests {
         assertThat(savedFilm.getId()).isPositive();
         assertThat(filmStorage.exists(savedFilm.getId())).isTrue();
         assertThat(savedFilm.getGenres()).containsExactly(new Genre(1, "Комедия"), new Genre(2, "Драма"));
+    }
+
+    @Test
+    void testFilmExistsReturnsFalseForUnknownId() {
+        assertThat(filmStorage.exists(999L)).isFalse();
     }
 
     @Test
