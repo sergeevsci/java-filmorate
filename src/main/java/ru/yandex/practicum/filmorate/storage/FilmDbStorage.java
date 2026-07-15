@@ -99,10 +99,8 @@ public class FilmDbStorage implements FilmStorage {
         }
         jdbc.update(UPDATE_QUERY, oldFilm.getName(), oldFilm.getDescription(), Date.valueOf(oldFilm.getReleaseDate()),
                 oldFilm.getDuration(), oldFilm.getMpa().id(), oldFilm.getId());
-        if (!newFilm.getGenres().isEmpty()) {
-            oldFilm.setGenres(newFilm.getGenres());
-            saveGenres(oldFilm);
-        }
+        oldFilm.setGenres(newFilm.getGenres());
+        saveGenres(oldFilm);
         return findById(oldFilm.getId()).orElseThrow();
     }
 
@@ -148,6 +146,9 @@ public class FilmDbStorage implements FilmStorage {
 
     private void saveGenres(Film film) {
         jdbc.update(DELETE_GENRES_QUERY, film.getId());
+        if (film.getGenres() == null) {
+            return;
+        }
         for (Genre genre : film.getGenres()) {
             jdbc.update(ADD_GENRE_QUERY, film.getId(), genre.id());
         }

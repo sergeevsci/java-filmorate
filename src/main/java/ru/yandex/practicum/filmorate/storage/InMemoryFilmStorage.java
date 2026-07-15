@@ -37,6 +37,10 @@ public class InMemoryFilmStorage implements FilmStorage {
         if (newFilm.getDuration() != null) {
             oldFilm.setDuration(newFilm.getDuration());
         }
+        if (newFilm.getMpa() != null) {
+            oldFilm.setMpa(newFilm.getMpa());
+        }
+        oldFilm.setGenres(newFilm.getGenres());
 
         // Сохраняем обновленный старый фильм обратно в мапу
         films.put(oldFilm.getId(), oldFilm);

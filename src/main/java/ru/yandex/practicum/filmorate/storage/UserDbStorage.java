@@ -111,13 +111,11 @@ public class UserDbStorage implements UserStorage {
     @Override
     public void addFriend(Long userId, Long friendId) {
         jdbc.update(ADD_FRIEND_QUERY, userId, friendId);
-        jdbc.update(ADD_FRIEND_QUERY, friendId, userId);
     }
 
     @Override
     public void deleteFriend(Long userId, Long friendId) {
         jdbc.update(DELETE_FRIEND_QUERY, userId, friendId);
-        jdbc.update(DELETE_FRIEND_QUERY, friendId, userId);
     }
 
     private void loadFriends(User user) {
