@@ -7,6 +7,7 @@ services:
       - "8082:8080"
 
     environment:
+      DB_URL: jdbc:h2:file:/app/db/filmorate
       DB_USERNAME: dbadmin
       DB_PASSWORD: 1
 
