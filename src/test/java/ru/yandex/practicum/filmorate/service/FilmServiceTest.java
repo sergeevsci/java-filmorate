@@ -5,7 +5,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
@@ -44,20 +43,8 @@ class FilmServiceTest {
     private FilmService filmService;
 
     @Test
-    void createRejectsDuplicateFilmForSameYear() {
-        Film existing = validFilm(1L);
-        Film duplicate = validFilm(null);
-        duplicate.setName(existing.getName().toUpperCase());
-        when(filmStorage.findAll()).thenReturn(List.of(existing));
-
-        assertThrows(DuplicatedDataException.class, () -> filmService.create(duplicate));
-        verify(filmStorage, never()).save(any());
-    }
-
-    @Test
     void createSavesNewFilm() {
         Film film = validFilm(null);
-        when(filmStorage.findAll()).thenReturn(List.of());
         when(filmStorage.save(film)).thenReturn(film);
 
         Film created = filmService.create(film);

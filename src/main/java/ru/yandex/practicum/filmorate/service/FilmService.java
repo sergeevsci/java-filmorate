@@ -3,7 +3,6 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
@@ -114,17 +113,6 @@ public class FilmService {
                 if (genreStorage.findById(genre.id()).isEmpty()) {
                     throw new NotFoundException("Жанр с ID " + genre.id() + " не найден");
                 }
-            }
-        }
-
-        if (film.getId() == null && film.getReleaseDate() != null) {
-            boolean isDuplicate = filmStorage.findAll().stream()
-                    .anyMatch(f -> f.getName().equalsIgnoreCase(film.getName())
-                            && f.getReleaseDate() != null
-                            && f.getReleaseDate().getYear() == film.getReleaseDate().getYear());
-            if (isDuplicate) {
-                log.warn("Валидация фильма провалена: обнаружен дубликат '{}' за {} год", film.getName(), film.getReleaseDate().getYear());
-                throw new DuplicatedDataException("Фильм с таким названием и годом релиза уже существует");
             }
         }
     }
