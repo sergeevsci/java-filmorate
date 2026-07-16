@@ -223,8 +223,15 @@ class FilmorateApplicationTests {
         Collection<Genre> genres = genreStorage.findAll();
 
         assertThat(genres)
-                .hasSize(10)
-                .contains(new Genre(1, "Комедия"), new Genre(10, "Приключения"));
+                .hasSize(6)
+                .containsExactly(
+                        new Genre(1, "Комедия"),
+                        new Genre(2, "Драма"),
+                        new Genre(3, "Мультфильм"),
+                        new Genre(4, "Триллер"),
+                        new Genre(5, "Документальный"),
+                        new Genre(6, "Боевик")
+                );
     }
 
     @Test
