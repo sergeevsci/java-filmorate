@@ -6,7 +6,10 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
+import ru.yandex.practicum.filmorate.storage.MpaDbStorage;
 
 import java.util.Collection;
 
@@ -16,10 +19,15 @@ public class FilmService {
 
     private final FilmStorage filmStorage;
     private final UserService userService;
+    private final GenreDbStorage genreStorage;
+    private final MpaDbStorage mpaStorage;
 
-    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage, UserService userService) {
+    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage, UserService userService,
+                       GenreDbStorage genreStorage, MpaDbStorage mpaStorage) {
         this.filmStorage = filmStorage;
         this.userService = userService;
+        this.genreStorage = genreStorage;
+        this.mpaStorage = mpaStorage;
     }
 
     public Film create(Film film) {
@@ -89,7 +97,7 @@ public class FilmService {
     }
 
     private Film getFilmOrThrow(Long id) {
-        return filmStorage.findById(id) // быстрый поиск тк у нас хэшмапа
+        return filmStorage.findById(id)
                 .orElseThrow(() -> {
                     log.warn("Фильм с ID {} не найден", id);
                     return new NotFoundException("Фильм с ID " + id + " не найден");
@@ -97,6 +105,18 @@ public class FilmService {
     }
 
     private void validate(Film film) {
+        if (film.getMpa() != null && mpaStorage.findById(film.getMpa().id()).isEmpty()) {
+            throw new NotFoundException("Рейтинг MPA с ID " + film.getMpa().id() + " не найден");
+        }
+
+        if (film.getGenres() != null) {
+            for (Genre genre : film.getGenres()) {
+                if (genreStorage.findById(genre.id()).isEmpty()) {
+                    throw new NotFoundException("Жанр с ID " + genre.id() + " не найден");
+                }
+            }
+        }
+
         if (film.getId() == null && film.getReleaseDate() != null) {
             boolean isDuplicate = filmStorage.findAll().stream()
                     .anyMatch(f -> f.getName().equalsIgnoreCase(film.getName())

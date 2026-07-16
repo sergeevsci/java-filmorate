@@ -8,7 +8,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
+import ru.yandex.practicum.filmorate.storage.MpaDbStorage;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -29,6 +33,12 @@ class FilmServiceTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private GenreDbStorage genreStorage;
+
+    @Mock
+    private MpaDbStorage mpaStorage;
 
     @InjectMocks
     private FilmService filmService;
@@ -63,6 +73,26 @@ class FilmServiceTest {
 
         assertThrows(NotFoundException.class, () -> filmService.update(film));
         verify(filmStorage, never()).update(any());
+    }
+
+    @Test
+    void createRejectsUnknownMpa() {
+        Film film = validFilm(null);
+        film.setMpa(new Mpa(999, null));
+        when(mpaStorage.findById(999)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> filmService.create(film));
+        verify(filmStorage, never()).save(any());
+    }
+
+    @Test
+    void createRejectsUnknownGenre() {
+        Film film = validFilm(null);
+        film.getGenres().add(new Genre(999, null));
+        when(genreStorage.findById(999)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> filmService.create(film));
+        verify(filmStorage, never()).save(any());
     }
 
     @Test
