@@ -76,7 +76,7 @@ class FilmServiceTest {
     void createRejectsUnknownGenre() {
         Film film = validFilm(null);
         film.getGenres().add(new Genre(999, null));
-        when(genreStorage.findById(999)).thenReturn(Optional.empty());
+        when(genreStorage.findAll()).thenReturn(List.of());
 
         assertThrows(NotFoundException.class, () -> filmService.create(film));
         verify(filmStorage, never()).save(any());
@@ -131,25 +131,26 @@ class FilmServiceTest {
     void getPopularFilmsSortsByLikesAndLimitsCount() {
         Film first = validFilm(1L);
         Film second = validFilm(2L);
-        Film third = validFilm(3L);
         first.getLikes().add(1L);
         second.getLikes().add(1L);
         second.getLikes().add(2L);
-        when(filmStorage.findAll()).thenReturn(List.of(first, second, third));
+        when(filmStorage.findPopular(2)).thenReturn(List.of(second, first));
 
         List<Film> popular = List.copyOf(filmService.getPopularFilms(2));
 
         assertEquals(List.of(second, first), popular);
+        verify(filmStorage).findPopular(2);
     }
 
     @Test
     void getPopularFilmsUsesDefaultLimitForNonPositiveCount() {
         Film first = validFilm(1L);
-        when(filmStorage.findAll()).thenReturn(List.of(first));
+        when(filmStorage.findPopular(10)).thenReturn(List.of(first));
 
         List<Film> popular = List.copyOf(filmService.getPopularFilms(0));
 
         assertEquals(List.of(first), popular);
+        verify(filmStorage).findPopular(10);
     }
 
     private Film validFilm(Long id) {
