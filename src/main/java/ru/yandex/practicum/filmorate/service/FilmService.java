@@ -87,14 +87,8 @@ public class FilmService {
     }
 
     public Collection<Film> getPopularFilms(Integer count) {
-        // Если count не передан в контроллере, используем 10
         int limit = (count <= 0) ? 10 : count;
-
-        return filmStorage.findAll().stream()
-                // Сортируем по убыванию количества лайков
-                .sorted((f1, f2) -> Integer.compare(f2.getLikes().size(), f1.getLikes().size()))
-                .limit(limit)
-                .toList();
+        return filmStorage.findPopular(limit);
     }
 
     private Film getFilmOrThrow(Long id) {

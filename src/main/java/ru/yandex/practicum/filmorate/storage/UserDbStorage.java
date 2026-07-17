@@ -11,7 +11,9 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -34,6 +36,7 @@ public class UserDbStorage implements UserStorage {
             FROM friendships
             WHERE user_id = ?
             """;
+    private static final String FIND_ALL_FRIEND_IDS_QUERY = "SELECT user_id, friend_id FROM friendships";
     private static final String ADD_FRIEND_QUERY = """
             MERGE INTO friendships(user_id, friend_id) KEY(user_id, friend_id)
             VALUES (?, ?)
@@ -92,7 +95,7 @@ public class UserDbStorage implements UserStorage {
     @Override
     public Collection<User> findAll() {
         List<User> users = jdbc.query(FIND_ALL_QUERY, mapper);
-        users.forEach(this::loadFriends);
+        loadFriends(users);
         return users;
     }
 
@@ -121,5 +124,23 @@ public class UserDbStorage implements UserStorage {
 
     private void loadFriends(User user) {
         user.getFriends().addAll(jdbc.queryForList(FIND_FRIEND_IDS_QUERY, Long.class, user.getId()));
+    }
+
+    private void loadFriends(List<User> users) {
+        if (users.isEmpty()) {
+            return;
+        }
+
+        Map<Long, User> usersById = new HashMap<>();
+        for (User user : users) {
+            usersById.put(user.getId(), user);
+        }
+
+        jdbc.query(FIND_ALL_FRIEND_IDS_QUERY, rs -> {
+            User user = usersById.get(rs.getLong("user_id"));
+            if (user != null) {
+                user.getFriends().add(rs.getLong("friend_id"));
+            }
+        });
     }
 }

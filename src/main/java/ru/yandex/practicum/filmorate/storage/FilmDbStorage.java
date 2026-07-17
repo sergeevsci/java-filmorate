@@ -27,6 +27,15 @@ public class FilmDbStorage implements FilmStorage {
             FROM films f
             JOIN mpa_ratings m ON f.mpa_id = m.id
             """;
+    private static final String FIND_POPULAR_QUERY = """
+            SELECT f.*, m.name AS mpa_name
+            FROM films f
+            JOIN mpa_ratings m ON f.mpa_id = m.id
+            LEFT JOIN film_likes fl ON f.id = fl.film_id
+            GROUP BY f.id, f.name, f.description, f.release_date, f.duration, f.mpa_id, m.name
+            ORDER BY COUNT(fl.user_id) DESC
+            LIMIT ?
+            """;
     private static final String FIND_BY_ID_QUERY = FIND_ALL_QUERY + " WHERE f.id = ?";
     private static final String INSERT_QUERY = """
             INSERT INTO films(name, description, release_date, duration, mpa_id)
@@ -123,6 +132,13 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public Collection<Film> findAll() {
         List<Film> films = jdbc.query(FIND_ALL_QUERY, mapper);
+        loadRelations(films);
+        return films;
+    }
+
+    @Override
+    public Collection<Film> findPopular(int limit) {
+        List<Film> films = jdbc.query(FIND_POPULAR_QUERY, mapper, limit);
         loadRelations(films);
         return films;
     }
