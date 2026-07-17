@@ -5,6 +5,7 @@ import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
@@ -12,15 +13,19 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.service.FilmService;
 import ru.yandex.practicum.filmorate.validation.OnCreate;
 import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
 import java.util.Collections;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -124,17 +129,37 @@ class FilmControllerTest {
         film.setId(1L);
         when(filmService.create(any(Film.class))).thenReturn(film);
 
-        // Переносим JSON на новую строку, чтобы скобки не слипались
-        String jsonContent = "{\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\",\"duration\":90}";
-
+        String jsonContent = "{\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\","
+                + "\"duration\":90,\"mpa\":{\"id\":1,\"name\":\"G\"}}";
 
         mockMvc.perform(post("/films")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonContent)) // Передаем готовую переменную
+                        .content(jsonContent))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
 
         verify(filmService).create(any(Film.class));
+    }
+
+    @Test
+    void createAcceptsMpaAndGenresWithOnlyIds() throws Exception {
+        Film film = validFilm();
+        film.setId(1L);
+        when(filmService.create(any(Film.class))).thenReturn(film);
+
+        String jsonContent = "{\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\","
+                + "\"duration\":90,\"mpa\":{\"id\":1},\"genres\":[{\"id\":1},{\"id\":2}]}";
+
+        mockMvc.perform(post("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonContent))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Film> filmCaptor = ArgumentCaptor.forClass(Film.class);
+        verify(filmService).create(filmCaptor.capture());
+        Film capturedFilm = filmCaptor.getValue();
+        assertThat(capturedFilm.getMpa()).isEqualTo(new Mpa(1, null));
+        assertThat(capturedFilm.getGenres()).containsExactlyInAnyOrder(new Genre(1, null), new Genre(2, null));
     }
 
     @Test
@@ -150,16 +175,36 @@ class FilmControllerTest {
         film.setId(1L);
         when(filmService.update(any(Film.class))).thenReturn(film);
 
-        // Выносим текстовый блок в отдельную переменную
-        String jsonContent = "{\"id\":1,\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\",\"duration\":90}";
-
+        String jsonContent = "{\"id\":1,\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\","
+                + "\"duration\":90,\"mpa\":{\"id\":1,\"name\":\"G\"}}";
 
         mockMvc.perform(put("/films")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(jsonContent)) // Используем переменную
+                        .content(jsonContent))
                 .andExpect(status().isOk());
 
         verify(filmService).update(any(Film.class));
+    }
+
+    @Test
+    void updateAcceptsMpaAndGenresWithOnlyIds() throws Exception {
+        Film film = validFilm();
+        film.setId(1L);
+        when(filmService.update(any(Film.class))).thenReturn(film);
+
+        String jsonContent = "{\"id\":1,\"name\":\"Film\",\"description\":\"Description\",\"releaseDate\":\"2000-01-01\","
+                + "\"duration\":90,\"mpa\":{\"id\":3},\"genres\":[{\"id\":4}]}";
+
+        mockMvc.perform(put("/films")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonContent))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Film> filmCaptor = ArgumentCaptor.forClass(Film.class);
+        verify(filmService).update(filmCaptor.capture());
+        Film capturedFilm = filmCaptor.getValue();
+        assertThat(capturedFilm.getMpa()).isEqualTo(new Mpa(3, null));
+        assertThat(capturedFilm.getGenres()).containsExactly(new Genre(4, null));
     }
 
     @Test
@@ -230,6 +275,8 @@ class FilmControllerTest {
         film.setDescription("Description");
         film.setReleaseDate(LocalDate.of(2000, 1, 1));
         film.setDuration(90);
+        film.setMpa(new Mpa(1, "G"));
+        film.setGenres(Set.of(new Genre(1, "Комедия")));
         return film;
     }
 }

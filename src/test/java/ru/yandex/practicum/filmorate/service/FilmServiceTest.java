@@ -5,10 +5,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
+import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
+import ru.yandex.practicum.filmorate.storage.MpaDbStorage;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -30,24 +33,18 @@ class FilmServiceTest {
     @Mock
     private UserService userService;
 
+    @Mock
+    private GenreDbStorage genreStorage;
+
+    @Mock
+    private MpaDbStorage mpaStorage;
+
     @InjectMocks
     private FilmService filmService;
 
     @Test
-    void createRejectsDuplicateFilmForSameYear() {
-        Film existing = validFilm(1L);
-        Film duplicate = validFilm(null);
-        duplicate.setName(existing.getName().toUpperCase());
-        when(filmStorage.findAll()).thenReturn(List.of(existing));
-
-        assertThrows(DuplicatedDataException.class, () -> filmService.create(duplicate));
-        verify(filmStorage, never()).save(any());
-    }
-
-    @Test
     void createSavesNewFilm() {
         Film film = validFilm(null);
-        when(filmStorage.findAll()).thenReturn(List.of());
         when(filmStorage.save(film)).thenReturn(film);
 
         Film created = filmService.create(film);
@@ -63,6 +60,26 @@ class FilmServiceTest {
 
         assertThrows(NotFoundException.class, () -> filmService.update(film));
         verify(filmStorage, never()).update(any());
+    }
+
+    @Test
+    void createRejectsUnknownMpa() {
+        Film film = validFilm(null);
+        film.setMpa(new Mpa(999, null));
+        when(mpaStorage.findById(999)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> filmService.create(film));
+        verify(filmStorage, never()).save(any());
+    }
+
+    @Test
+    void createRejectsUnknownGenre() {
+        Film film = validFilm(null);
+        film.getGenres().add(new Genre(999, null));
+        when(genreStorage.findAll()).thenReturn(List.of());
+
+        assertThrows(NotFoundException.class, () -> filmService.create(film));
+        verify(filmStorage, never()).save(any());
     }
 
     @Test
@@ -114,25 +131,26 @@ class FilmServiceTest {
     void getPopularFilmsSortsByLikesAndLimitsCount() {
         Film first = validFilm(1L);
         Film second = validFilm(2L);
-        Film third = validFilm(3L);
         first.getLikes().add(1L);
         second.getLikes().add(1L);
         second.getLikes().add(2L);
-        when(filmStorage.findAll()).thenReturn(List.of(first, second, third));
+        when(filmStorage.findPopular(2)).thenReturn(List.of(second, first));
 
         List<Film> popular = List.copyOf(filmService.getPopularFilms(2));
 
         assertEquals(List.of(second, first), popular);
+        verify(filmStorage).findPopular(2);
     }
 
     @Test
     void getPopularFilmsUsesDefaultLimitForNonPositiveCount() {
         Film first = validFilm(1L);
-        when(filmStorage.findAll()).thenReturn(List.of(first));
+        when(filmStorage.findPopular(10)).thenReturn(List.of(first));
 
         List<Film> popular = List.copyOf(filmService.getPopularFilms(0));
 
         assertEquals(List.of(first), popular);
+        verify(filmStorage).findPopular(10);
     }
 
     private Film validFilm(Long id) {

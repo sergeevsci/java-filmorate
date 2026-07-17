@@ -1,7 +1,7 @@
 package ru.yandex.practicum.filmorate.service;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.ConditionsNotMetException;
 import ru.yandex.practicum.filmorate.exception.DuplicatedDataException;
@@ -15,10 +15,13 @@ import java.util.Set;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class UserService {
 
     private final UserStorage userStorage;
+
+    public UserService(@Qualifier("userDbStorage") UserStorage userStorage) {
+        this.userStorage = userStorage;
+    }
 
     public User create(User user) {
         validate(user);
@@ -51,12 +54,12 @@ public class UserService {
         }
 
         User user = getUserOrThrow(userId);
-        User friend = getUserOrThrow(friendId);
+        getUserOrThrow(friendId);
 
         user.getFriends().add(friendId); // проверок одобрения нет
-        friend.getFriends().add(userId); // Взаимное добавление (друг у друга в друзьях)
+        userStorage.addFriend(userId, friendId);
 
-        log.info("Пользователи ID {} и ID {} теперь друзья", userId, friendId);
+        log.info("Пользователь ID {} добавил в друзья пользователя ID {}", userId, friendId);
     }
 
     public void deleteFriend(Long userId, Long friendId) {
@@ -66,12 +69,12 @@ public class UserService {
         }
 
         User user = getUserOrThrow(userId);
-        User friend = getUserOrThrow(friendId);
+        getUserOrThrow(friendId);
 
         user.getFriends().remove(friendId);
-        friend.getFriends().remove(userId);
+        userStorage.deleteFriend(userId, friendId);
 
-        log.info("Пользователи ID {} и ID {} больше не друзья", userId, friendId);
+        log.info("Пользователь ID {} удалил из друзей пользователя ID {}", userId, friendId);
     }
 
     public Collection<User> getFriends(Long userId) {
