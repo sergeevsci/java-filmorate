@@ -1,6 +1,6 @@
 package ru.yandex.practicum.filmorate.storage;
 
-import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -11,9 +11,12 @@ import ru.yandex.practicum.filmorate.storage.mapper.FilmRowMapper;
 
 import java.sql.Date;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -36,6 +39,7 @@ public class FilmDbStorage implements FilmStorage {
             """;
     private static final String EXISTS_QUERY = "SELECT COUNT(*) FROM films WHERE id = ?";
     private static final String FIND_LIKE_IDS_QUERY = "SELECT user_id FROM film_likes WHERE film_id = ?";
+    private static final String FIND_ALL_LIKE_IDS_QUERY = "SELECT film_id, user_id FROM film_likes";
     private static final String ADD_LIKE_QUERY = """
             MERGE INTO film_likes(film_id, user_id) KEY(film_id, user_id)
             VALUES (?, ?)
@@ -47,6 +51,12 @@ public class FilmDbStorage implements FilmStorage {
             JOIN film_genres fg ON g.id = fg.genre_id
             WHERE fg.film_id = ?
             ORDER BY g.id
+            """;
+    private static final String FIND_ALL_GENRES_QUERY = """
+            SELECT fg.film_id, g.id, g.name
+            FROM genres g
+            JOIN film_genres fg ON g.id = fg.genre_id
+            ORDER BY fg.film_id, g.id
             """;
     private static final String DELETE_GENRES_QUERY = "DELETE FROM film_genres WHERE film_id = ?";
     private static final String ADD_GENRE_QUERY = """
@@ -113,19 +123,21 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public Collection<Film> findAll() {
         List<Film> films = jdbc.query(FIND_ALL_QUERY, mapper);
-        films.forEach(this::loadRelations);
+        loadRelations(films);
         return films;
     }
 
     @Override
     public Optional<Film> findById(Long id) {
-        try {
-            Film film = jdbc.queryForObject(FIND_BY_ID_QUERY, mapper, id);
-            loadRelations(film);
-            return Optional.ofNullable(film);
-        } catch (EmptyResultDataAccessException ignored) {
+        List<Film> films = jdbc.query(FIND_BY_ID_QUERY, mapper, id);
+
+        if (films.isEmpty()) {
             return Optional.empty();
         }
+
+        Film film = films.getFirst();
+        loadRelations(film);
+        return Optional.of(film);
     }
 
     @Override
@@ -144,13 +156,49 @@ public class FilmDbStorage implements FilmStorage {
                 (rs, rowNum) -> new Genre(rs.getInt("id"), rs.getString("name")), film.getId()));
     }
 
-    private void saveGenres(Film film) {
-        jdbc.update(DELETE_GENRES_QUERY, film.getId());
-        if (film.getGenres() == null) {
+    private void loadRelations(List<Film> films) {
+        if (films.isEmpty()) {
             return;
         }
-        for (Genre genre : film.getGenres()) {
-            jdbc.update(ADD_GENRE_QUERY, film.getId(), genre.id());
+
+        Map<Long, Film> filmsById = new HashMap<>();
+        for (Film film : films) {
+            filmsById.put(film.getId(), film);
         }
+
+        jdbc.query(FIND_ALL_LIKE_IDS_QUERY, rs -> {
+            Film film = filmsById.get(rs.getLong("film_id"));
+            if (film != null) {
+                film.getLikes().add(rs.getLong("user_id"));
+            }
+        });
+
+        jdbc.query(FIND_ALL_GENRES_QUERY, rs -> {
+            Film film = filmsById.get(rs.getLong("film_id"));
+            if (film != null) {
+                film.getGenres().add(new Genre(rs.getInt("id"), rs.getString("name")));
+            }
+        });
+    }
+
+    private void saveGenres(Film film) {
+        jdbc.update(DELETE_GENRES_QUERY, film.getId());
+        if (film.getGenres() == null || film.getGenres().isEmpty()) {
+            return;
+        }
+
+        List<Genre> genres = List.copyOf(film.getGenres());
+        jdbc.batchUpdate(ADD_GENRE_QUERY, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ps.setLong(1, film.getId());
+                ps.setInt(2, genres.get(i).id());
+            }
+
+            @Override
+            public int getBatchSize() {
+                return genres.size();
+            }
+        });
     }
 }

@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.storage;
 
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -99,13 +98,15 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public Optional<User> findById(Long id) {
-        try {
-            User user = jdbc.queryForObject(FIND_BY_ID_QUERY, mapper, id);
-            loadFriends(user);
-            return Optional.ofNullable(user);
-        } catch (EmptyResultDataAccessException ignored) {
+        List<User> users = jdbc.query(FIND_BY_ID_QUERY, mapper, id);
+
+        if (users.isEmpty()) {
             return Optional.empty();
         }
+
+        User user = users.getFirst();
+        loadFriends(user);
+        return Optional.of(user);
     }
 
     @Override

@@ -11,6 +11,8 @@ import ru.yandex.practicum.filmorate.storage.GenreDbStorage;
 import ru.yandex.practicum.filmorate.storage.MpaDbStorage;
 
 import java.util.Collection;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -108,11 +110,17 @@ public class FilmService {
             throw new NotFoundException("Рейтинг MPA с ID " + film.getMpa().id() + " не найден");
         }
 
-        if (film.getGenres() != null) {
-            for (Genre genre : film.getGenres()) {
-                if (genreStorage.findById(genre.id()).isEmpty()) {
-                    throw new NotFoundException("Жанр с ID " + genre.id() + " не найден");
-                }
+        if (film.getGenres() == null || film.getGenres().isEmpty()) {
+            return;
+        }
+
+        Set<Integer> genreIds = genreStorage.findAll().stream()
+                .map(Genre::id)
+                .collect(Collectors.toSet()); // один запрос на получение коллекции всех существующих Жанров
+
+        for (Genre genre : film.getGenres()) { // тогда ищем уже по коллекции
+            if (!genreIds.contains(genre.id())) {
+                throw new NotFoundException("Жанр с ID " + genre.id() + " не найден");
             }
         }
     }
